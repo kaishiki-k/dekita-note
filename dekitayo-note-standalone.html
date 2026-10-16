@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5f9a4c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>できたよ！ノート</title>
+<style>
+  /* 外部のサイト・フォント・ライブラリを一切使わない、完全に自己完結のファイルです */
+  :root {
+    --leaf-50: #f4f8ef; --leaf-100: #e4efd9; --leaf-200: #cfe3bf; --leaf-300: #aecf97;
+    --leaf-500: #5f9a4c; --leaf-600: #4a7c3b; --leaf-700: #3b6230;
+    --cream: #fffdf5; --sun-300: #f7d778; --sun-400: #f2c14e; --sun-500: #e8a92c;
+    --bark: #6b4f3a; --red: #c0564b;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--bark);
+    font-family: "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif;
+    line-height: 1.5;
+    background-color: #eef5e6;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(174,207,151,.35) 0, transparent 40%),
+      radial-gradient(circle at 90% 30%, rgba(247,215,120,.22) 0, transparent 35%),
+      radial-gradient(circle at 20% 90%, rgba(134,181,108,.25) 0, transparent 40%);
+    background-attachment: fixed;
+  }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; color: inherit; cursor: pointer; }
+
+  .wrap {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 20px max(16px, env(safe-area-inset-right, 0px)) max(56px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  /* ヘッダー */
+  header { text-align: center; margin-bottom: 16px; }
+  .eyebrow { margin: 0; color: var(--leaf-600); font-weight: 700; letter-spacing: .15em; font-size: .85rem; }
+  h1 { margin: 4px 0 0; font-size: 1.9rem; font-weight: 900; color: var(--leaf-700); }
+  #todayLabel { margin: 4px 0 0; font-size: .85rem; font-weight: 700; color: var(--leaf-600); }
+
+  /* ステータス */
+  .status { display: grid; gap: 12px; margin-bottom: 24px; }
+  .month {
+    position: relative; overflow: hidden; text-align: center; color: #fff;
+    background: linear-gradient(135deg, var(--leaf-500), var(--leaf-600));
+    border-radius: 24px; padding: 20px; box-shadow: 0 8px 18px rgba(74,124,59,.28);
+  }
+  .month .leaf { position: absolute; right: -8px; top: -12px; font-size: 4.5rem; opacity: .2; user-select: none; }
+  .month .label { margin: 0; font-weight: 700; color: var(--leaf-100); }
+  .month .amount { margin: 4px 0 0; line-height: 1; }
+  .month .num { font-size: 3.8rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .month .yen { font-size: 1.5rem; font-weight: 900; margin-left: 4px; }
+  .today {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--cream); border: 4px solid var(--sun-300); border-radius: 24px; padding: 14px 18px;
+    box-shadow: 0 4px 10px rgba(107,79,58,.12);
+  }
+  .today .label { margin: 0; font-weight: 900; font-size: 1.1rem; }
+  .today .amount { margin: 0; line-height: 1; color: var(--sun-500); font-weight: 900; }
+  .today .num { font-size: 2.3rem; font-variant-numeric: tabular-nums; }
+  .today .yen { font-size: 1.1rem; margin-left: 4px; }
+
+  /* セクション */
+  section { margin-bottom: 24px; }
+  h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 1.3rem; font-weight: 900; color: var(--leaf-700); }
+  h2 .badge { width: 36px; height: 36px; border-radius: 50%; background: var(--leaf-200); display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+  /* タスクボタン */
+  .task {
+    position: relative; min-height: 8.5rem; padding: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
+    background: var(--cream); border: 4px solid var(--leaf-300); border-radius: 24px;
+    box-shadow: 0 5px 10px rgba(107,79,58,.14);
+    transition: transform .12s ease, background-color .2s ease, border-color .2s ease;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  .task:active { transform: scale(.96); }
+  .task:focus-visible, .btn:focus-visible { outline: 4px solid var(--sun-400); outline-offset: 2px; }
+  .task .icon { font-size: 2.3rem; line-height: 1; }
+  .task .nm { font-size: 1.05rem; font-weight: 900; line-height: 1.25; }
+  .task .price { font-size: .75rem; font-weight: 700; color: var(--leaf-600); background: var(--leaf-100); border-radius: 999px; padding: 2px 10px; }
+  .task.done { background: var(--leaf-500); border-color: var(--leaf-700); color: #fff; }
+  .task.done .nm { font-size: .85rem; font-weight: 700; color: var(--leaf-100); }
+  .task.done .big { font-size: 1.5rem; font-weight: 900; line-height: 1.2; }
+  .task.done .price { color: #fff; background: rgba(255,255,255,.25); }
+  .task .check {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; color: var(--leaf-600); font-weight: 900; font-size: 1.1rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    animation: checkIn .35s ease;
+  }
+  .bounce { animation: bounce .45s ease; }
+  @keyframes bounce { 0% { transform: scale(1); } 35% { transform: scale(1.07) rotate(-1deg); } 70% { transform: scale(.98); } 100% { transform: scale(1); } }
+  @keyframes checkIn { from { transform: scale(0) rotate(-40deg); } to { transform: scale(1) rotate(0); } }
+
+  .pop {
+    position: fixed; pointer-events: none; z-index: 60; font-weight: 900; color: var(--sun-500); font-size: 1.6rem;
+    text-shadow: 0 2px 0 #fff, 0 0 8px #fff; animation: floatUp .9s ease-out forwards;
+  }
+  .pop.minus { color: var(--red); }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(.6); }
+    20% { opacity: 1; transform: translate(-50%, -14px) scale(1.15); }
+    100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+  }
+
+  /* 履歴 */
+  .history { background: var(--cream); border: 2px solid var(--leaf-200); border-radius: 24px; padding: 8px 12px; box-shadow: 0 2px 6px rgba(107,79,58,.08); }
+  .history ul { list-style: none; margin: 0; padding: 0; }
+  .history li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--leaf-100); }
+  .history li:last-child { border-bottom: none; }
+  .history .hi { font-size: 1.5rem; width: 36px; text-align: center; }
+  .history .hn { flex: 1; min-width: 0; font-weight: 900; }
+  .history .ht { font-size: .75rem; font-weight: 700; color: var(--leaf-600); }
+  .history .hp { width: 4.2rem; text-align: right; font-weight: 900; color: var(--sun-500); }
+  .empty { text-align: center; color: var(--leaf-500); font-weight: 700; padding: 22px 0; margin: 0; }
+
+  /* 保護者用 */
+  .parent { text-align: center; border-top: 2px dashed var(--leaf-300); padding-top: 24px; }
+  .parent .cap { margin: 0 0 8px; font-size: .75rem; font-weight: 700; color: var(--leaf-600); }
+  .parent .help { margin: 8px 0 0; font-size: .75rem; color: var(--leaf-600); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: #fff; border: 2px solid rgba(107,79,58,.3); border-radius: 16px;
+    padding: 12px 20px; font-weight: 700; box-shadow: 0 2px 5px rgba(107,79,58,.1);
+    transition: transform .12s ease; touch-action: manipulation;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.dark { background: var(--bark); border-color: var(--bark); color: #fff; font-weight: 900; }
+  .btn.soft { background: var(--cream); border-color: var(--leaf-300); font-weight: 900; }
+  .confirm {
+    margin-top: 16px; text-align: left; background: #fff; border: 4px solid var(--sun-400); border-radius: 24px;
+    padding: 16px; box-shadow: 0 6px 14px rgba(107,79,58,.15);
+  }
+  .confirm .t { margin: 0; font-weight: 900; font-size: 1.1rem; }
+  .confirm .d { margin: 8px 0 0; font-size: .9rem; font-weight: 700; }
+  .confirm .w { margin: 4px 0 0; font-size: .75rem; font-weight: 700; color: var(--leaf-600); }
+  .confirm .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .ok-msg { margin: 12px 0 0; font-size: .9rem; font-weight: 900; color: var(--leaf-600); }
+
+  details.backup { margin-top: 24px; text-align: left; background: var(--cream); border: 2px solid var(--leaf-200); border-radius: 20px; padding: 12px 16px; }
+  details.backup summary { cursor: pointer; font-weight: 900; color: var(--leaf-700); }
+  details.backup p { font-size: .8rem; margin: 8px 0; }
+  details.backup textarea {
+    width: 100%; min-height: 5.5rem; border: 2px solid var(--leaf-300); border-radius: 12px; padding: 8px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .75rem; color: var(--bark); background: #fff;
+  }
+  details.backup .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  details.backup .row .btn { padding: 10px 14px; font-size: .85rem; }
+  #backupMsg { font-weight: 900; color: var(--leaf-600); }
+
+  /* カレンダー */
+  .cal { background: var(--cream); border: 2px solid var(--leaf-200); border-radius: 24px; padding: 12px; box-shadow: 0 2px 6px rgba(107,79,58,.08); }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .cal-head .ttl { flex: 1; text-align: center; font-weight: 900; font-size: 1.15rem; color: var(--leaf-700); }
+  .cal-nav { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--leaf-300); background: #fff; color: var(--leaf-700); font-size: 1rem; font-weight: 900; touch-action: manipulation; }
+  .cal-nav:active { transform: scale(.94); }
+  .cal-nav:disabled { opacity: .35; cursor: default; }
+  .cal-nav:focus-visible, .cal-day:focus-visible { outline: 4px solid var(--sun-400); outline-offset: 2px; }
+  .cal-sum { margin: 0 0 8px; text-align: center; font-size: .8rem; font-weight: 700; color: var(--leaf-600); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-dow { text-align: center; font-size: .7rem; font-weight: 900; color: var(--leaf-600); padding: 2px 0; }
+  .cal-dow.sun { color: var(--red); }
+  .cal-dow.sat { color: #4a78b8; }
+  .cal-day {
+    min-height: 4.1rem; padding: 4px 2px; border: 2px solid transparent; border-radius: 12px; background: transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 900; font-size: .9rem;
+    touch-action: manipulation; color: var(--bark);
+  }
+  .cal-day.has { background: var(--leaf-100); border-color: var(--leaf-200); }
+  .cal-day.today { border-color: var(--sun-400); }
+  .cal-day.sel { background: var(--leaf-500); border-color: var(--leaf-700); color: #fff; }
+  .cal-day .pills { display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: .62rem; font-weight: 700; line-height: 1.2; }
+  .cal-detail { margin-top: 12px; padding-top: 10px; border-top: 2px dashed var(--leaf-200); }
+  .cal-detail .dt { margin: 0 0 4px; font-weight: 900; }
+  .cal-detail .dt small { font-weight: 700; color: var(--sun-500); margin-left: 6px; }
+  .cal-detail ul { list-style: none; margin: 0; padding: 0; }
+  .cal-detail li { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--leaf-100); }
+  .cal-detail li:last-child { border-bottom: none; }
+  .cal-detail .hi { font-size: 1.4rem; width: 36px; text-align: center; }
+  .cal-detail .hn { flex: 1; min-width: 0; font-weight: 900; }
+  .cal-detail .ht { font-size: .75rem; font-weight: 700; color: var(--leaf-600); }
+  .cal-detail .empty { padding: 12px 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bounce, .pop, .task .check { animation: none; }
+    .task, .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">🌱 まいにち こつこつ 🌱</p>
+    <h1>できたよ！ノート</h1>
+    <p id="todayLabel"></p>
+  </header>
+
+  <div class="status">
+    <div class="month">
+      <div class="leaf">🌿</div>
+      <p class="label">🪙 こんげつの ごほうび</p>
+      <p class="amount"><span id="monthTotal" class="num">0</span><span class="yen">えん</span></p>
+    </div>
+    <div class="today">
+      <p class="label">⭐ きょうの ごほうび</p>
+      <p class="amount"><span id="todayTotal" class="num">0</span><span class="yen">えん</span></p>
+    </div>
+  </div>
+
+  <section>
+    <h2><span class="badge">⚽</span>じしゅれん</h2>
+    <div id="trainingList" class="grid"></div>
+  </section>
+
+  <section>
+    <h2><span class="badge">🏠</span>おてつだい</h2>
+    <div id="choreList" class="grid"></div>
+  </section>
+
+  <section>
+    <h2><span class="badge">📝</span>きょう できたこと</h2>
+    <div class="history">
+      <ul id="historyList"></ul>
+      <p id="historyEmpty" class="empty">まだ なにも ないよ。<br>ひとつ やってみよう！ 💪</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="badge">📅</span>きろく カレンダー</h2>
+    <div class="cal">
+      <div class="cal-head">
+        <button id="calPrev" type="button" class="cal-nav" aria-label="まえの つき">◀</button>
+        <div id="calTitle" class="ttl"></div>
+        <button id="calNext" type="button" class="cal-nav" aria-label="つぎの つき">▶</button>
+      </div>
+      <p id="calSummary" class="cal-sum"></p>
+      <div id="calGrid" class="cal-grid"></div>
+      <div class="cal-detail">
+        <p id="calDetailTitle" class="dt"></p>
+        <ul id="calDetailList"></ul>
+        <p id="calDetailEmpty" class="empty">この日の きろくは ないよ。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="parent">
+    <p class="cap">👪 おうちの かた へ</p>
+    <button id="resetBtn" type="button" class="btn">🔄 こんげつの精算（リセット）</button>
+    <p id="resetHelp" class="help">お小遣いを渡したあとに押してください。<br>今月の合計が 0円 に戻ります。</p>
+
+    <div id="confirmBox" class="confirm" hidden role="alertdialog" aria-labelledby="confirmTitle">
+      <p id="confirmTitle" class="t">本当に リセットしますか？</p>
+      <p id="confirmText" class="d"></p>
+      <p class="w">この操作は もとに もどせません。</p>
+      <div class="two">
+        <button id="confirmNo" type="button" class="btn soft">やめる</button>
+        <button id="confirmYes" type="button" class="btn dark">はい、リセットする</button>
+      </div>
+    </div>
+    <p id="resetDone" class="ok-msg" hidden role="status">リセットしました。新しい月、がんばろう！ 🌱</p>
+
+    <details class="backup">
+      <summary>💾 きろくの バックアップ（機種変更・ほかの端末へ）</summary>
+      <p>「きろくを 文字にする」で出た文字をコピーして、メモなどに残せます。ほかの端末では、その文字を下の枠にはりつけて「この文字から もどす」を押します。</p>
+      <textarea id="backupText" spellcheck="false" aria-label="バックアップの文字"></textarea>
+      <div class="row">
+        <button id="backupMake" type="button" class="btn">きろくを 文字にする</button>
+        <button id="backupRestore" type="button" class="btn">この文字から もどす</button>
+      </div>
+      <p id="backupMsg" role="status"></p>
+    </details>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'otetsudai-note-v1';
+  var PRICE = 10;
+
+  var ITEMS = [
+    { id: 'rebounder',  group: 'training', icon: '🥅', name: 'リバウンダー',   price: PRICE },
+    { id: 'lifting',    group: 'training', icon: '⚽', name: 'リフティング',   price: PRICE },
+    { id: 'ballTouch',  group: 'training', icon: '👟', name: 'ボールタッチ',   price: PRICE },
+    { id: 'jumpBox',    group: 'training', icon: '📦', name: 'ジャンプボックス', price: PRICE },
+    { id: 'agility',    group: 'training', icon: '🏃', name: 'アジリティ',     price: PRICE },
+    { id: 'tidy',       group: 'chore',    icon: '🧸', name: 'おかたづけ',     price: PRICE },
+    { id: 'tableWipe',  group: 'chore',    icon: '🧽', name: 'テーブルふき',   price: PRICE },
+    { id: 'shoes',      group: 'chore',    icon: '👞', name: 'くつならべ',     price: PRICE }
+  ];
+  var ITEM_MAP = {};
+  ITEMS.forEach(function (it) { ITEM_MAP[it.id] = it; });
+
+  /* ---------- 日付 ---------- */
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function todayLabel() {
+    var d = new Date();
+    var w = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'][d.getDay()];
+    return d.getFullYear() + 'ねん ' + (d.getMonth() + 1) + 'がつ ' + d.getDate() + 'にち（' + w + '）';
+  }
+  function timeLabel(ts) {
+    var d = new Date(ts);
+    return d.getHours() + ':' + pad(d.getMinutes());
+  }
+
+  /* ---------- 保存・読み込み ---------- */
+  function freshState() { return { date: todayKey(), monthTotal: 0, done: {}, history: {} }; }
+
+  function normalize(s) {
+    if (!s || typeof s !== 'object') return null;
+    var out = freshState();
+    if (typeof s.monthTotal === 'number' && isFinite(s.monthTotal) && s.monthTotal >= 0) out.monthTotal = Math.round(s.monthTotal);
+    if (typeof s.date === 'string' && s.date) out.date = s.date;
+    if (s.done && typeof s.done === 'object') {
+      Object.keys(s.done).forEach(function (id) {
+        if (ITEM_MAP[id] && typeof s.done[id] === 'number') out.done[id] = s.done[id];
+      });
+    }
+    if (s.history && typeof s.history === 'object') {
+      Object.keys(s.history).forEach(function (k) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+        var day = s.history[k];
+        if (!day || typeof day !== 'object') return;
+        var clean = {};
+        var any = false;
+        Object.keys(day).forEach(function (id) {
+          if (ITEM_MAP[id] && typeof day[id] === 'number') { clean[id] = day[id]; any = true; }
+        });
+        if (any) out.history[k] = clean;
+      });
+    }
+    return out;
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return freshState();
+      return normalize(JSON.parse(raw)) || freshState();
+    } catch (e) {
+      return freshState();
+    }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* 保存できない環境では無視 */ }
+  }
+
+  var state = load();
+
+  /* その日の「できた！」を、カレンダー用の記録に残す（すでにある分はそのまま） */
+  function mergeIntoHistory(key, doneObj) {
+    var ids = Object.keys(doneObj || {}).filter(function (id) { return ITEM_MAP[id]; });
+    if (!ids.length) return;
+    if (!state.history[key]) state.history[key] = {};
+    ids.forEach(function (id) {
+      if (!state.history[key][id]) state.history[key][id] = doneObj[id];
+    });
+  }
+
+  /* 日付が変わったら「きょう」の分だけリセット（今月の合計と記録は引き継ぐ） */
+  function checkNewDay() {
+    var t = todayKey();
+    if (state.date !== t) {
+      mergeIntoHistory(state.date, state.done);
+      state.date = t;
+      state.done = {};
+      save();
+      return true;
+    }
+    return false;
+  }
+  mergeIntoHistory(state.date, state.done);
+  checkNewDay();
+
+  /* ---------- 描画 ---------- */
+  var elMonth = document.getElementById('monthTotal');
+  var elToday = document.getElementById('todayTotal');
+  var elTraining = document.getElementById('trainingList');
+  var elChore = document.getElementById('choreList');
+  var elHistory = document.getElementById('historyList');
+  var elHistoryEmpty = document.getElementById('historyEmpty');
+  var elDateLabel = document.getElementById('todayLabel');
+
+  function todayAmount() {
+    var sum = 0;
+    Object.keys(state.done).forEach(function (id) { if (ITEM_MAP[id]) sum += ITEM_MAP[id].price; });
+    return sum;
+  }
+
+  function buildButton(it) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.id = it.id;
+    b.className = 'task';
+    return b;
+  }
+
+  function paintButton(b) {
+    var it = ITEM_MAP[b.dataset.id];
+    var done = !!state.done[it.id];
+    if (done) {
+      b.className = 'task done';
+      b.innerHTML =
+        '<span class="check">✓</span>' +
+        '<span class="icon">' + it.icon + '</span>' +
+        '<span class="nm">' + it.name + '</span>' +
+        '<span class="big">できた！</span>' +
+        '<span class="price">+' + it.price + 'えん</span>';
+      b.setAttribute('aria-pressed', 'true');
+      b.setAttribute('aria-label', it.name + ' できた！ もういちど おすと とりけし');
+    } else {
+      b.className = 'task';
+      b.innerHTML =
+        '<span class="icon">' + it.icon + '</span>' +
+        '<span class="nm">' + it.name + '</span>' +
+        '<span class="price">' + it.price + 'えん</span>';
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', it.name + ' ' + it.price + 'えん');
+    }
+  }
+
+  function renderHistory() {
+    var entries = Object.keys(state.done)
+      .filter(function (id) { return ITEM_MAP[id]; })
+      .map(function (id) { return { item: ITEM_MAP[id], ts: state.done[id] }; })
+      .sort(function (a, b) { return a.ts - b.ts; });
+
+    elHistory.innerHTML = '';
+    elHistoryEmpty.hidden = entries.length > 0;
+
+    entries.forEach(function (e) {
+      var li = document.createElement('li');
+      li.innerHTML =
+        '<span class="hi">' + e.item.icon + '</span>' +
+        '<span class="hn">' + e.item.name + '</span>' +
+        '<span class="ht">' + timeLabel(e.ts) + '</span>' +
+        '<span class="hp">+' + e.item.price + 'えん</span>';
+      elHistory.appendChild(li);
+    });
+  }
+
+  function renderTotals() {
+    elMonth.textContent = state.monthTotal.toLocaleString('ja-JP');
+    elToday.textContent = todayAmount().toLocaleString('ja-JP');
+    elDateLabel.textContent = todayLabel();
+  }
+
+  /* ---------- カレンダー ---------- */
+  var elCalTitle = document.getElementById('calTitle');
+  var elCalSummary = document.getElementById('calSummary');
+  var elCalGrid = document.getElementById('calGrid');
+  var elCalDetailTitle = document.getElementById('calDetailTitle');
+  var elCalDetailList = document.getElementById('calDetailList');
+  var elCalDetailEmpty = document.getElementById('calDetailEmpty');
+  var elCalPrev = document.getElementById('calPrev');
+  var elCalNext = document.getElementById('calNext');
+  var WEEK = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'];
+  var cal = { y: 0, m: 0, sel: '' };
+
+  (function () {
+    var d = new Date();
+    cal.y = d.getFullYear();
+    cal.m = d.getMonth();
+    cal.sel = todayKey();
+  })();
+
+  function dayKey(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+
+  function entriesFor(key) {
+    var day = state.history[key];
+    if (!day) return [];
+    return Object.keys(day)
+      .filter(function (id) { return ITEM_MAP[id]; })
+      .map(function (id) { return { item: ITEM_MAP[id], ts: day[id] }; })
+      .sort(function (a, b) { return a.ts - b.ts; });
+  }
+
+  function isCurrentMonth() {
+    var now = new Date();
+    return cal.y === now.getFullYear() && cal.m === now.getMonth();
+  }
+
+  /* 月を切りかえたとき、最初に見せる日を選ぶ */
+  function pickSel() {
+    if (isCurrentMonth()) return todayKey();
+    var days = new Date(cal.y, cal.m + 1, 0).getDate();
+    for (var d = days; d >= 1; d--) {
+      if (entriesFor(dayKey(cal.y, cal.m, d)).length) return dayKey(cal.y, cal.m, d);
+    }
+    return dayKey(cal.y, cal.m, 1);
+  }
+
+  function renderCalendar() {
+    var y = cal.y, m = cal.m;
+    var days = new Date(y, m + 1, 0).getDate();
+    var firstDow = new Date(y, m, 1).getDay();
+    var today = todayKey();
+    var activeDays = 0;
+    var totalCount = 0;
+    var html = '';
+
+    elCalTitle.textContent = y + 'ねん ' + (m + 1) + 'がつ';
+    elCalNext.disabled = isCurrentMonth();
+
+    WEEK.forEach(function (w, i) {
+      html += '<div class="cal-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</div>';
+    });
+    for (var b = 0; b < firstDow; b++) html += '<div></div>';
+
+    for (var d = 1; d <= days; d++) {
+      var key = dayKey(y, m, d);
+      var list = entriesFor(key);
+      var t = list.filter(function (e) { return e.item.group === 'training'; }).length;
+      var c = list.length - t;
+      if (list.length) { activeDays++; totalCount += list.length; }
+      var cls = 'cal-day' + (list.length ? ' has' : '') + (key === today ? ' today' : '') + (key === cal.sel ? ' sel' : '');
+      var pills = '';
+      if (t) pills += '<span>⚽' + t + '</span>';
+      if (c) pills += '<span>🏠' + c + '</span>';
+      html += '<button type="button" class="' + cls + '" data-key="' + key + '" aria-label="' + (m + 1) + 'がつ' + d + 'にち ' + list.length + 'こ できた">' +
+        '<span>' + d + '</span><span class="pills">' + pills + '</span></button>';
+    }
+    elCalGrid.innerHTML = html;
+
+    elCalSummary.textContent = activeDays
+      ? 'この月は ' + activeDays + 'にち がんばったよ！（ぜんぶで ' + totalCount + 'こ）'
+      : 'この月の きろくは まだ ないよ。';
+
+    /* えらんだ日の くわしい きろく */
+    var parts = cal.sel.split('-');
+    var sy = +parts[0], sm = +parts[1] - 1, sd = +parts[2];
+    var entries = entriesFor(cal.sel);
+    var sum = 0;
+    entries.forEach(function (e) { sum += e.item.price; });
+    elCalDetailTitle.innerHTML = (sm + 1) + 'がつ' + sd + 'にち（' + WEEK[new Date(sy, sm, sd).getDay()] + '）' +
+      (entries.length ? '<small>ごうけい ' + sum.toLocaleString('ja-JP') + 'えん</small>' : '');
+    elCalDetailList.innerHTML = '';
+    elCalDetailEmpty.hidden = entries.length > 0;
+    entries.forEach(function (e) {
+      var li = document.createElement('li');
+      li.innerHTML =
+        '<span class="hi">' + e.item.icon + '</span>' +
+        '<span class="hn">' + e.item.name + '</span>' +
+        '<span class="ht">' + timeLabel(e.ts) + '</span>';
+      elCalDetailList.appendChild(li);
+    });
+  }
+
+  elCalPrev.addEventListener('click', function () {
+    cal.m--;
+    if (cal.m < 0) { cal.m = 11; cal.y--; }
+    cal.sel = pickSel();
+    renderCalendar();
+  });
+  elCalNext.addEventListener('click', function () {
+    if (isCurrentMonth()) return;
+    cal.m++;
+    if (cal.m > 11) { cal.m = 0; cal.y++; }
+    cal.sel = pickSel();
+    renderCalendar();
+  });
+  elCalGrid.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('.cal-day[data-key]') : null;
+    if (!b) return;
+    cal.sel = b.dataset.key;
+    renderCalendar();
+  });
+
+  function renderAll() {
+    renderTotals();
+    document.querySelectorAll('.task[data-id]').forEach(paintButton);
+    renderHistory();
+    renderCalendar();
+  }
+
+  ITEMS.forEach(function (it) {
+    (it.group === 'training' ? elTraining : elChore).appendChild(buildButton(it));
+  });
+
+  /* ---------- 「+10えん」ポップ ---------- */
+  function showPop(target, text, isMinus) {
+    var r = target.getBoundingClientRect();
+    var p = document.createElement('div');
+    p.className = 'pop' + (isMinus ? ' minus' : '');
+    p.textContent = text;
+    p.style.left = (r.left + r.width / 2) + 'px';
+    p.style.top = (r.top + r.height / 3) + 'px';
+    document.body.appendChild(p);
+    setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 950);
+  }
+
+  /* ---------- タップ処理 ---------- */
+  function toggle(id, btn) {
+    var it = ITEM_MAP[id];
+    if (!it) return;
+
+    if (state.done[id]) {
+      delete state.done[id];
+      if (state.history[state.date]) {
+        delete state.history[state.date][id];
+        if (!Object.keys(state.history[state.date]).length) delete state.history[state.date];
+      }
+      state.monthTotal = Math.max(0, state.monthTotal - it.price);
+      showPop(btn, '-' + it.price, true);
+    } else {
+      state.done[id] = Date.now();
+      if (!state.history[state.date]) state.history[state.date] = {};
+      state.history[state.date][id] = state.done[id];
+      state.monthTotal += it.price;
+      showPop(btn, '+' + it.price, false);
+      if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
+    }
+    save();
+    renderAll();
+
+    var newBtn = document.querySelector('.task[data-id="' + id + '"]');
+    if (newBtn && state.done[id]) {
+      newBtn.classList.add('bounce');
+      setTimeout(function () { newBtn.classList.remove('bounce'); }, 500);
+    }
+  }
+
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest ? ev.target.closest('.task[data-id]') : null;
+    if (!btn) return;
+    if (checkNewDay()) renderAll();
+    toggle(btn.dataset.id, btn);
+  });
+
+  /* ---------- 月末の精算（ページ内で確認） ---------- */
+  var elResetBtn = document.getElementById('resetBtn');
+  var elResetHelp = document.getElementById('resetHelp');
+  var elConfirmBox = document.getElementById('confirmBox');
+  var elConfirmText = document.getElementById('confirmText');
+  var elResetDone = document.getElementById('resetDone');
+  var doneTimer = null;
+
+  function closeConfirm() {
+    elConfirmBox.hidden = true;
+    elResetBtn.hidden = false;
+    elResetHelp.hidden = false;
+  }
+
+  elResetBtn.addEventListener('click', function () {
+    elResetDone.hidden = true;
+    elConfirmText.textContent =
+      'いまの ごうけい ' + state.monthTotal.toLocaleString('ja-JP') + '円 を 0円 に もどします。' +
+      'きょうの「できた！」も クリアされます。お小遣いは もう わたしましたか？';
+    elResetBtn.hidden = true;
+    elResetHelp.hidden = true;
+    elConfirmBox.hidden = false;
+    document.getElementById('confirmNo').focus();
+  });
+  document.getElementById('confirmNo').addEventListener('click', closeConfirm);
+  document.getElementById('confirmYes').addEventListener('click', function () {
+    state.monthTotal = 0;
+    state.done = {};
+    state.date = todayKey();
+    save();
+    renderAll();
+    closeConfirm();
+    elResetDone.hidden = false;
+    if (doneTimer) clearTimeout(doneTimer);
+    doneTimer = setTimeout(function () { elResetDone.hidden = true; }, 4000);
+  });
+
+  /* ---------- バックアップ ---------- */
+  var elBackupText = document.getElementById('backupText');
+  var elBackupMsg = document.getElementById('backupMsg');
+
+  function say(msg) { elBackupMsg.textContent = msg; }
+
+  document.getElementById('backupMake').addEventListener('click', function () {
+    var text = JSON.stringify({ app: 'dekitayo-note', v: 1, monthTotal: state.monthTotal, date: state.date, done: state.done, history: state.history });
+    elBackupText.value = text;
+    elBackupText.focus();
+    elBackupText.select();
+    var copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { say('コピーしました。メモなどに はりつけて のこしてください。'); },
+                                                 function () { say('文字を長おしして コピーしてください。'); });
+        copied = true;
+      }
+    } catch (e) { /* 下の表示へ */ }
+    if (!copied) say('文字を長おしして コピーしてください。');
+  });
+
+  document.getElementById('backupRestore').addEventListener('click', function () {
+    var raw = elBackupText.value.trim();
+    if (!raw) { say('上の枠に バックアップの文字を はりつけてください。'); return; }
+    try {
+      var obj = JSON.parse(raw);
+      if (!obj || obj.app !== 'dekitayo-note') throw new Error('bad');
+      var s = normalize(obj);
+      if (!s) throw new Error('bad');
+      state = s;
+      checkNewDay();
+      save();
+      renderAll();
+      say('もどしました。いまの ごうけいは ' + state.monthTotal.toLocaleString('ja-JP') + '円 です。');
+    } catch (e) {
+      say('この文字は つかえませんでした。「きろくを 文字にする」で作った文字を、そのまま はりつけてください。');
+    }
+  });
+
+  /* ---------- 日付またぎ・他タブの更新 ---------- */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && checkNewDay()) renderAll();
+  });
+  window.addEventListener('focus', function () {
+    if (checkNewDay()) renderAll();
+  });
+  setInterval(function () { if (checkNewDay()) renderAll(); }, 60 * 1000);
+  window.addEventListener('storage', function (e) {
+    if (e.key === STORAGE_KEY) {
+      state = load();
+      checkNewDay();
+      renderAll();
+    }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
